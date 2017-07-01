@@ -10,7 +10,7 @@ import vss
 
 # Create a set that contains the LOCAL disks you want to shadow
 local_drives = set()
-set.add('C')
+local_drives.add('C')
 
 # Initialize the Shadow Copies
 sc = vss.ShadowCopy(local_drives)
