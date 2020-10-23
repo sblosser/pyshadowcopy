@@ -10,6 +10,8 @@ class ShadowCopy(object):
         self.__shadow_ids = {}
         self.__shadow_paths = {}
 
+        self.wmi = win32com.client.GetObject("winmgmts:\\\\.\\root\\cimv2")
+
         for dl in drive_letters:
             self.__add_drive(dl)
 
@@ -63,27 +65,19 @@ class ShadowCopy(object):
             self.__shadow_ids[drive_letter] = shadow_id
             self.__shadow_paths[drive_letter] = shadow_path
 
+    def __vss_get_id(self, shadow_id):
+        obj = self.wmi.ExecQuery("SELECT * FROM Win32_ShadowCopy WHERE ID=\"{0}\"".format(shadow_id))
+        return obj[0]
+
     def __vss_list(self, shadow_id):
-        wcd = win32com.client.Dispatch("WbemScripting.SWbemLocator")
-        wmi = wcd.ConnectServer(".", "root\cimv2")
-        obj = wmi.ExecQuery(
-            "SELECT * FROM Win32_ShadowCopy WHERE ID=\"{0}\"".format(
-                shadow_id))
-        return obj[0].DeviceObject
+        return self.__vss_get_id(shadow_id).DeviceObject
 
     def __vss_create(self, drive_letter):
-        wmi = win32com.client.GetObject(
-            "winmgmts:\\\\.\\root\\cimv2:Win32_ShadowCopy")
-        createmethod = wmi.Methods_("Create")
-        createparams = createmethod.InParameters
+        sc = self.wmi.get("Win32_ShadowCopy")
+        createparams = sc.Methods_("Create").InParameters.SpawnInstance_()
         createparams.Properties_[1].value = "{0}:\\".format(drive_letter)
         results = wmi.ExecMethod_("Create", createparams)
         return results.Properties_[1].value
 
     def __vss_delete(self, shadow_id):
-        wcd = win32com.client.Dispatch("WbemScripting.SWbemLocator")
-        wmi = wcd.ConnectServer(".", "root\cimv2")
-        obj = wmi.ExecQuery(
-            "SELECT * FROM Win32_ShadowCopy WHERE ID=\"{0}\"".format(
-                shadow_id))
-        obj[0].Delete_()
+        self.__vss_get_id(shadow_id).Delete_()
